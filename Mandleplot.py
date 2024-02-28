@@ -20,8 +20,8 @@ def escape_length(z: complex):
         return ITERATIONS - i
 
 
-def sigmoid_decay(x, decay_center, fade=1):
-    t = (x - decay_center) / fade
+def sigmoid_decay(x, shift, fade=1):
+    t = (x/fade) - shift
     return 1 / (np.exp(t)+1)
 
 
@@ -46,7 +46,7 @@ def main():
             elif steps!=0:
                 pixel_value = npimg[b+height//2][a+width//2]
                 # npimg[b+height//2][a+width//2] = (pixel_value/3.017) * (-np.arctan((steps-10)/2)+(np.pi/2))
-                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 4.5, 10)
+                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 3, 1.5)
     image = Image.fromarray(npimg)
     image.show()
 main()
