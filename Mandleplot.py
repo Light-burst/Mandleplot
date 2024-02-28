@@ -21,7 +21,7 @@ def escape_length(z: complex):
 
 
 def sigmoid_decay(x, decay_center, fade=1):
-    t = (x/fade) - decay_center
+    t = (x - decay_center) / fade
     return 1 / (np.exp(t)+1)
 
 
