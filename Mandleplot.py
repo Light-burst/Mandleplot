@@ -46,7 +46,7 @@ def main():
             elif steps!=0:
                 pixel_value = npimg[b+height//2][a+width//2]
                 # npimg[b+height//2][a+width//2] = (pixel_value/3.017) * (-np.arctan((steps-10)/2)+(np.pi/2))
-                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 4.5, 1)
+                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 4.5, 10)
     image = Image.fromarray(npimg)
     image.show()
 main()
