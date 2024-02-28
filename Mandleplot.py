@@ -2,8 +2,8 @@ import os
 import numpy as np
 from PIL import Image
 
-ITERATIONS = 50
-POWER = 6
+ITERATIONS = 250
+POWER = 2
 
 
 
@@ -20,34 +20,26 @@ def escape_length(z: complex):
         return ITERATIONS - i
 
 
-def sigmoid_decay(x, shift, fade=1):
+def sigmoid_decay(x, shift=12, fade=1.2):
     t = (x/fade) - shift
     return 1 / (np.exp(t)+1)
 
 
 
 def main():
-    image = Image.open(os.path.join(os.getcwd(), "img.jpg"), 'r')
+    image = Image.open(os.path.join(os.getcwd(), "img3.jpg"), 'r')
     npimg = np.array(image)
-    k=0
-    height = npimg.shape[0]
-    width = npimg.shape[1]
-    total = height*width
-    for b in range(-height//2, height//2):
-        for a in range(-width//2, width//2):
-            z = complex(a/(width//4), b/(height//4))
-            k += 1
-            percent = 100*(k/total)
-            if percent%1==0:
-                print(percent)
-            steps = escape_length(z)
-            if steps<0:
-                npimg[b+height//2][a+width//2] = 0
-            elif steps!=0:
-                pixel_value = npimg[b+height//2][a+width//2]
-                # npimg[b+height//2][a+width//2] = (pixel_value/3.017) * (-np.arctan((steps-10)/2)+(np.pi/2))
-                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 3, 1.5)
-    image = Image.fromarray(npimg)
+    height, width, _ = npimg.shape
+    complex_plane = np.array([[[complex(b/(width//4), a/(height//4))]
+                               for b in range(-width//2, width//2)]
+                              for a in range(-height//2, 0)])
+
+    mandlebrot = np.vectorize(escape_length)(complex_plane)
+    mandlebrot = np.pad(mandlebrot, ((0, height//2), (0, 0), (0, 0)), "reflect")
+    mandlebrot_mask = np.where(mandlebrot<0, True, False)
+    npimg = np.where(mandlebrot_mask, 0, npimg)
+    mandleimg = np.multiply(np.vectorize(sigmoid_decay)(mandlebrot), npimg)
+    image = Image.fromarray(mandleimg.astype(np.uint8))
     image.show()
 main()
 
