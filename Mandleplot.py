@@ -2,8 +2,14 @@ import os
 import numpy as np
 from PIL import Image
 
-ITERATIONS = 500
-POWER = 2
+ITERATIONS = 1250
+POWER = 6
+IMAGE_FILE = "img4.jpg"
+BLANK_SIZE = 10000
+SMOOTHING = True
+FADE = 3
+SHIFT = 3.7
+MIRROR_INPUT = True
 
 
 
@@ -20,18 +26,23 @@ def escape_length(z: complex):
         return ITERATIONS - i
 
 
-def sigmoid_decay(x, shift=20, fade=1.2):
+def sigmoid_decay(x, shift=SHIFT, fade=FADE):
     t = (x/fade) - shift
     return 1 / (np.exp(t)+1)
 
 
 
 def main():
-    # image = Image.open(os.path.join(os.getcwd(), "img.jpg"), 'r')
-    # npimg = np.array(image)
-    npimg = np.zeros((12000, 12000, 3), dtype=np.uint8)
-    npimg = npimg + 255
+    if IMAGE_FILE != "":
+        image = Image.open(os.path.join(os.getcwd(), IMAGE_FILE), 'r')
+        npimg = np.array(image)
+    else:
+        npimg = np.zeros((BLANK_SIZE, BLANK_SIZE, 3), dtype=np.uint8)
+        npimg = npimg + 255
     height, width, _ = npimg.shape
+    if MIRROR_INPUT:
+        npimg = npimg[:][0:height//2]
+        npimg = np.pad(npimg, ((0, height // 2), (0, 0), (0, 0)), "reflect")
     complex_plane = np.array([[[complex(b/(width//4), a/(height//4))]
                                for b in range(-width//2, width//2)]
                               for a in range(-height//2, 0)], dtype=complex)
@@ -41,19 +52,24 @@ def main():
 
     Zn = np.zeros_like(complex_plane)
     for iteration in range(ITERATIONS):
-        Zn = np.power(Zn, 2) + complex_plane
+        Zn = np.power(Zn, POWER) + complex_plane
         escaped = np.absolute(Zn) > 2
         mandlemask = np.logical_and(escaped, undone)
         mandlebrot = np.where(mandlemask, iteration+1, mandlebrot)
         undone = np.logical_and(undone, np.logical_not(mandlemask))
+        progress = (100*iteration) / ITERATIONS
+        if progress % 1 == 0:
+            print(str(int(progress))+'%')
 
     mandlebrot = np.pad(mandlebrot, ((0, height//2), (0, 0), (0, 0)), "reflect")
     mandlebrot_mask = np.where(mandlebrot==0, True, False)
-    npimg = np.where(mandlebrot_mask, 0, npimg)
-    mandleimg = np.multiply(np.vectorize(sigmoid_decay)(mandlebrot), npimg)
-    # mandleimg = np.multiply((mandlebrot), npimg)
+    mandleimg = np.where(mandlebrot_mask, 0, npimg)
+    if SMOOTHING:
+        mandleimg = np.multiply(np.vectorize(sigmoid_decay)(mandlebrot), mandleimg)
     image = Image.fromarray(mandleimg.astype(np.uint8))
-    image.show()
+    outpath = os.path.join(os.getcwd(), "Mandled_"+IMAGE_FILE)
+    outpath = outpath if IMAGE_FILE != "" else outpath[:-1]+".jpg"
+    image.save(outpath)
 main()
 
 
