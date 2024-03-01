@@ -17,11 +17,9 @@ def escape_length(complex_plane):
             z = np.power(complex(0, 0), POWER) + c
             for i in range(ITERATIONS):
                 z = np.power(z, POWER) + c
-                if np.absolute(z) > 2.0:
+                if z.real**2 + z.imag**2 > 4.0:
                     result[b][a] = i+1
                     break
-            if np.absolute(z) < 2.0:
-                result[b][a] = 0
     return result
 
 
