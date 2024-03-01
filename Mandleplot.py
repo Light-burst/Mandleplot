@@ -1,53 +1,49 @@
 import os
 import numpy as np
 from PIL import Image
+import numba
 
-ITERATIONS = 50
+ITERATIONS = 250
 POWER = 6
 
 
+@numba.njit(fastmath=True, parallel=True)
+def escape_length(complex_plane):
+    width, height, _ = complex_plane.shape
+    result = np.zeros((width, height, 1), dtype=np.uint8)
+    for b in numba.prange(-height//2, height//2):
+        for a in range(-width//2, width//2):
+            c = complex(a/(width//4), b/(height//4))
+            z = np.power(complex(0, 0), POWER) + c
+            for i in range(ITERATIONS):
+                z = np.power(z, POWER) + c
+                if np.absolute(z) > 2.0:
+                    result[b][a] = i+1
+                    break
+            if np.absolute(z) < 2.0:
+                result[b][a] = 0
+    return result
 
-def escape_length(z: complex):
-    init_z = z
-    z = np.power(complex(0, 0), POWER) + init_z
-    i = ITERATIONS
-    while np.absolute(z) < 2.0 and i!=0:
-        z = np.power(z, POWER) + init_z
-        i -= 1
-    if np.absolute(z) < 2.0:
-        return -1
-    else:
-        return ITERATIONS - i
 
-
-def sigmoid_decay(x, shift, fade=1):
+def sigmoid_decay(x, shift=3, fade=1):
     t = (x/fade) - shift
     return 1 / (np.exp(t)+1)
 
 
 
 def main():
-    image = Image.open(os.path.join(os.getcwd(), "img.jpg"), 'r')
+    image = Image.open(os.path.join(os.getcwd(), "img4.jpg"), 'r')
     npimg = np.array(image)
-    k=0
-    height = npimg.shape[0]
-    width = npimg.shape[1]
-    total = height*width
-    for b in range(-height//2, height//2):
-        for a in range(-width//2, width//2):
-            z = complex(a/(width//4), b/(height//4))
-            k += 1
-            percent = 100*(k/total)
-            if percent%1==0:
-                print(percent)
-            steps = escape_length(z)
-            if steps<0:
-                npimg[b+height//2][a+width//2] = 0
-            elif steps!=0:
-                pixel_value = npimg[b+height//2][a+width//2]
-                # npimg[b+height//2][a+width//2] = (pixel_value/3.017) * (-np.arctan((steps-10)/2)+(np.pi/2))
-                npimg[b + height // 2][a + width // 2] = pixel_value * sigmoid_decay(steps, 3, 1.5)
-    image = Image.fromarray(npimg)
+    width = npimg.shape[0]
+    height = npimg.shape[1]
+    complex_plane = np.array([[[complex(b/(width//4), a/(height//4))]
+                               for b in range(-width//2, width//2)]
+                              for a in range(-height//2, height//2)], dtype=complex)
+    mandlebrot = escape_length(complex_plane)
+    mandlebrot_mask = np.where(mandlebrot == 0, True, False)
+    mandleimg = np.where(mandlebrot_mask, 0, npimg)
+    mandleimg = np.multiply(np.vectorize(sigmoid_decay)(mandlebrot), mandleimg)
+    image = Image.fromarray(mandleimg.astype(np.uint8))
     image.show()
 main()
 
